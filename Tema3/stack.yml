@@ -1,0 +1,64 @@
+version: '3.7'
+
+services:
+  influxdb:
+    image: influxdb:latest
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=adminSPRC2023
+      - DOCKER_INFLUXDB_INIT_PASSWORD=adminSPRC2023
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=DSLBVofZtyjjtuoRrN1-Vme_sA0ondSg0GNMkJqpGrNyvEJtAPk-MqYtgSBHpLZKxMvtbpL7RnjYXHu7j2Anww==
+      - DOCKER_INFLUXDB_INIT_ORG=SPRC
+      - DOCKER_INFLUXDB_INIT_BUCKET=my_bucket
+    volumes:
+      - influxdb-storage:/var/lib/influxdb2
+    networks:
+      - network-gui
+      - network-db
+
+  grafana:
+    image: grafana/grafana:latest
+    depends_on:
+      - influxdb
+    ports:
+      - '80:3000'
+    volumes:
+      - grafana-storage:/var/lib/grafana
+      - ./grafana-provisioning:/etc/grafana/provisioning
+    environment:
+      - GF_SECURITY_ADMIN_USER=asistent
+      - GF_SECURITY_ADMIN_PASSWORD=grafanaSPRC2023
+    networks:
+      - network-gui
+
+  server:
+    depends_on:
+      - influxdb
+      - broker
+    build: ./src
+    image: server
+    env_file: ./envs/server.env
+    networks:
+      - network-broker
+      - network-db
+
+  broker:
+    image: eclipse-mosquitto:latest
+    ports:
+      - '1883:1883'
+    networks:
+      - network-broker
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+
+volumes:
+  influxdb-storage:
+  grafana-storage:
+
+networks:
+  network-broker:
+    name: network-broker
+  network-db:
+    name: network-db
+  network-gui:
+    name: network-gui
